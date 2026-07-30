@@ -7,7 +7,6 @@ import AutoImport from "unplugin-auto-import/vite";
 import { defineConfig } from "vite";
 import RubyPlugin from "vite-plugin-ruby";
 
-import { staleModuleGuard } from "./config/vite/stale-module-guard";
 
 const rootPath = path.dirname(fileURLToPath(import.meta.url));
 
@@ -94,7 +93,13 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     RubyPlugin(),
     react(),
-    staleModuleGuard(),
+    // NOTE: staleModuleGuard() is disabled in the v0 preview. It invalidates any
+    // module whose file mtime is newer than its last transform; because the repo
+    // was just synced, every file's mtime is fresh, so it invalidated modules
+    // (including React) on every request — causing endless dep re-optimization and
+    // a second React instance ("Invalid hook call"). It's a dev-only safety net,
+    // safe to omit here.
+    // staleModuleGuard(),
     UnpluginTypia({ cache: true }),
     AutoImport({
       imports: [
@@ -126,6 +131,12 @@ export default defineConfig(({ mode }) => ({
     // triggering "Invalid hook call / more than one copy of React" and a blank page.
     dedupe: ["react", "react-dom"],
     alias: {
+      // Force every react / react-dom import (app source AND pre-bundled deps like
+      // @inertiajs/react) to resolve to the exact same physical module, so there is
+      // only ever one React instance. Prevents "Invalid hook call / more than one
+      // copy of React" in the v0 preview dev server.
+      react: path.join(rootPath, "node_modules/react"),
+      "react-dom": path.join(rootPath, "node_modules/react-dom"),
       $app: path.join(rootPath, "app/javascript"),
       $assets: path.join(rootPath, "public"),
       $vendor: path.join(rootPath, "vendor/assets/javascripts"),
@@ -144,7 +155,7 @@ export default defineConfig(({ mode }) => ({
   // links its own React while app source uses another, causing "Invalid hook call /
   // more than one copy of React" and a blank page in dev.
   optimizeDeps: {
-    include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "@inertiajs/react"],
+    include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
   build: {
     // Stable content-hash filenames for long-lived CDN caching.
