@@ -36,7 +36,14 @@ Rails.application.configure do
   end
 
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
-  config.asset_host = "#{PROTOCOL}://#{ASSET_DOMAIN}"
+  # Under the v0 preview the app is reached through a *.vercel.run proxy host, so
+  # absolute asset URLs pointing at app.localhost:3000 are unreachable. Serve
+  # assets same-origin (relative) so they resolve through the preview host.
+  if ENV["V0_PREVIEW"] == "true"
+    config.asset_host = nil
+  else
+    config.asset_host = "#{PROTOCOL}://#{ASSET_DOMAIN}"
+  end
 
   # Where to store uploaded files (see config/storage.yml for options)
   config.active_storage.service = :development

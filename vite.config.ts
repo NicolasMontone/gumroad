@@ -121,6 +121,10 @@ export default defineConfig(({ mode }) => ({
       : []),
   ],
   resolve: {
+    // Ensure a single copy of React across pre-bundled deps and app source.
+    // Without this the Inertia/React deps can resolve a second React instance,
+    // triggering "Invalid hook call / more than one copy of React" and a blank page.
+    dedupe: ["react", "react-dom"],
     alias: {
       $app: path.join(rootPath, "app/javascript"),
       $assets: path.join(rootPath, "public"),
@@ -134,6 +138,13 @@ export default defineConfig(({ mode }) => ({
     "process.env.RAILS_ENV": JSON.stringify(process.env.RAILS_ENV || "test"),
     "process.env.PROTOCOL": JSON.stringify(process.env.PROTOCOL || "https"),
     "process.env": "{}",
+  },
+  // Force React and the Inertia adapter through Vite's dep pre-bundling together
+  // so they all share ONE React instance. Otherwise the pre-bundled Inertia adapter
+  // links its own React while app source uses another, causing "Invalid hook call /
+  // more than one copy of React" and a blank page in dev.
+  optimizeDeps: {
+    include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "@inertiajs/react"],
   },
   build: {
     // Stable content-hash filenames for long-lived CDN caching.
