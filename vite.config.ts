@@ -92,7 +92,11 @@ function manualChunks(id: string) {
 export default defineConfig(({ mode }) => ({
   plugins: [
     RubyPlugin(),
-    react(),
+    // Fast Refresh injects the @react-refresh runtime from a different module/optimize
+    // context than the SPA page graph, which (with vite-plugin-ruby's glob-loaded
+    // Inertia pages) pulls in a SECOND optimized React chunk -> two React instances
+    // -> "Invalid hook call". A static preview doesn't need HMR, so disable it.
+    react({ fastRefresh: false }),
     // NOTE: staleModuleGuard() is disabled in the v0 preview. It invalidates any
     // module whose file mtime is newer than its last transform; because the repo
     // was just synced, every file's mtime is fresh, so it invalidated modules
@@ -155,7 +159,32 @@ export default defineConfig(({ mode }) => ({
   // links its own React while app source uses another, causing "Invalid hook call /
   // more than one copy of React" and a blank page in dev.
   optimizeDeps: {
-    include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime"],
+    // Pre-bundle React AND the app's common third-party deps in the FIRST optimize
+    // pass. Otherwise Vite discovers these lazily (when a page component is imported)
+    // and runs a SECOND optimize pass mid-load, so the page ends up loading react.js
+    // from two different optimize hashes at once -> two React instances -> "Invalid
+    // hook call". Declaring them here + noDiscovery forces a single, up-front bundle.
+    // holdUntilCrawlEnd waits for the full import crawl before serving, so no second pass.
+    holdUntilCrawlEnd: true,
+    include: [
+      "react",
+      "react-dom",
+      "react-dom/client",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@inertiajs/react",
+      "@inertiajs/core",
+      "@boxicons/react",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-popover",
+      "classnames",
+      "class-variance-authority",
+      "tailwind-merge",
+      "lodash-es",
+      "date-fns",
+      "immer",
+    ],
   },
   build: {
     // Stable content-hash filenames for long-lived CDN caching.
