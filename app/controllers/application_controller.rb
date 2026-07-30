@@ -120,20 +120,36 @@ class ApplicationController < ActionController::Base
   end
 
   protected
+    # Path portion of the referrer, host-agnostic. The *_url comparisons below are
+    # built from the configured DOMAIN and never match when the app is served on a
+    # different host (e.g. a v0 preview proxy), which would let the login page keep
+    # redirecting to itself with an ever-nesting `next=` param. Comparing the path
+    # too makes these guards correct regardless of host.
+    def request_referrer_path
+      return "" if request.referrer.blank?
+      URI.parse(request.referrer).path.presence || "/"
+    rescue URI::InvalidURIError
+      ""
+    end
+
     def request_referrer_is_not_root_route?
-      request.referrer != root_path && request.referrer != root_url
+      request.referrer != root_path && request.referrer != root_url &&
+        request_referrer_path != root_path
     end
 
     def request_referrer_is_not_sign_up_route?
-      request.referrer != signup_path && request.referrer != signup_url
+      request.referrer != signup_path && request.referrer != signup_url &&
+        request_referrer_path != signup_path
     end
 
     def request_referrer_is_not_login_route?
-      !request.referrer.start_with?(login_url) && !request.referrer.start_with?(login_path)
+      !request.referrer.start_with?(login_url) && !request.referrer.start_with?(login_path) &&
+        !request_referrer_path.start_with?(login_path)
     end
 
     def request_referrer_is_not_two_factor_authentication_path?
-      !request.referrer.start_with?(two_factor_authentication_url)
+      !request.referrer.start_with?(two_factor_authentication_url) &&
+        !request_referrer_path.start_with?(two_factor_authentication_path)
     end
 
     def request_referrer_is_a_valid_after_login_path?
