@@ -22,7 +22,7 @@ development: &development
   username: <%= ENV.fetch("DATABASE_USERNAME") %>
   password: <%= ENV.fetch("DATABASE_PASSWORD", "") %>
   variables:
-    max_execution_time: <%= 5 * 60000 %> # 5 minutes
+    <%= "max_execution_time: #{5 * 60000}" unless ENV["SKIP_MAX_EXECUTION_TIME"] == "true" %> # 5 minutes (unsupported on MariaDB)
     sql_mode: 'NO_ENGINE_SUBSTITUTION'
 
   makara:
