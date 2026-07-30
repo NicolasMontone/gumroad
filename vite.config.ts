@@ -133,14 +133,13 @@ export default defineConfig(({ mode }) => ({
     // Ensure a single copy of React across pre-bundled deps and app source.
     // Without this the Inertia/React deps can resolve a second React instance,
     // triggering "Invalid hook call / more than one copy of React" and a blank page.
+    // dedupe forces a single copy of React across pre-bundled deps (e.g.
+    // @inertiajs/react) and app source. Do NOT add explicit react/react-dom path
+    // aliases here: aliasing to the raw package dir makes app source load a
+    // *different* React than the optimized dep chunk, which reintroduces the
+    // "Invalid hook call / more than one copy of React" error and a blank page.
     dedupe: ["react", "react-dom"],
     alias: {
-      // Force every react / react-dom import (app source AND pre-bundled deps like
-      // @inertiajs/react) to resolve to the exact same physical module, so there is
-      // only ever one React instance. Prevents "Invalid hook call / more than one
-      // copy of React" in the v0 preview dev server.
-      react: path.join(rootPath, "node_modules/react"),
-      "react-dom": path.join(rootPath, "node_modules/react-dom"),
       $app: path.join(rootPath, "app/javascript"),
       $assets: path.join(rootPath, "public"),
       $vendor: path.join(rootPath, "vendor/assets/javascripts"),
@@ -159,13 +158,19 @@ export default defineConfig(({ mode }) => ({
   // links its own React while app source uses another, causing "Invalid hook call /
   // more than one copy of React" and a blank page in dev.
   optimizeDeps: {
-    // Pre-bundle React AND the app's common third-party deps in the FIRST optimize
-    // pass. Otherwise Vite discovers these lazily (when a page component is imported)
-    // and runs a SECOND optimize pass mid-load, so the page ends up loading react.js
-    // from two different optimize hashes at once -> two React instances -> "Invalid
-    // hook call". Declaring them here + noDiscovery forces a single, up-front bundle.
-    // holdUntilCrawlEnd waits for the full import crawl before serving, so no second pass.
-    holdUntilCrawlEnd: true,
+    // ROOT CAUSE of the blank page / "Invalid hook call": Inertia lazy-loads page
+    // components via import.meta.glob, so Vite's startup scan never sees them. Each
+    // navigation then discovers "new" deps at runtime, triggering re-optimization +
+    // a full page reload. Every reload mints a NEW optimized-dep hash, and during the
+    // transient render the app-source React (old hash) and the Inertia adapter's React
+    // (new hash) briefly mismatch -> "more than one copy of React" -> crash -> which
+    // triggers yet another reload. The result is an endless reload loop and a blank page.
+    //
+    // noDiscovery disables runtime dependency discovery/re-optimization: Vite bundles
+    // exactly the `include` list ONCE at startup and never re-optimizes or force-reloads.
+    // That breaks the loop and keeps a single, stable React instance. `include` must
+    // therefore list every shared dep the pages rely on.
+    noDiscovery: true,
     include: [
       "react",
       "react-dom",
