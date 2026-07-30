@@ -106,9 +106,10 @@ if environment == :development && !ENV["LOCAL_PROXY_DOMAIN"].nil?
   VALID_REQUEST_HOSTS << ENV["LOCAL_PROXY_DOMAIN"].sub(/https?:\/\//, "")
 end
 
-# v0 preview: requests are proxied through a *.vercel.run host that is not known
-# ahead of time. In development only, treat any vercel.run host as the app domain
-# so the domain-constrained routes (root, login, etc.) match under the preview.
+# v0 preview: requests are proxied through a preview host that is not known ahead
+# of time (e.g. *.vercel.run or *.vusercontent.net). In development only, treat any
+# such preview host as the app domain so the domain-constrained routes (root, login,
+# etc.) match under the preview.
 if environment == :development
-  PREVIEW_HOST_SUFFIX = ".vercel.run"
+  PREVIEW_HOST_SUFFIXES = [".vercel.run", ".vusercontent.net", ".vercel.sh"].freeze
 end
