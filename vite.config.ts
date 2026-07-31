@@ -134,7 +134,22 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "react-dom/client", "react/jsx-dev-runtime", "react/jsx-runtime"],
+    // Crawl every entrypoint AND every lazily-globbed Inertia page at server
+    // startup so the dep optimizer discovers all dependencies up front. Inertia
+    // pages are lazy-imported, so without this the optimizer re-runs on the
+    // first page request mid-load, leaving the browser with two different
+    // optimizer generations of React -> "Invalid hook call" + blank screen.
+    entries: ["app/javascript/entrypoints/*.{ts,js}", "app/javascript/pages/**/*.tsx"],
+    // Optimize React and everything that depends on it in ONE pass so React and
+    // @inertiajs/react can't land on mismatched cache hashes.
+    include: [
+      "react",
+      "react-dom",
+      "react-dom/client",
+      "react/jsx-dev-runtime",
+      "react/jsx-runtime",
+      "@inertiajs/react",
+    ],
   },
   define: {
     SSR: false,
