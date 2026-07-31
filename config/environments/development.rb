@@ -36,7 +36,15 @@ Rails.application.configure do
   end
 
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
-  config.asset_host = "#{PROTOCOL}://#{ASSET_DOMAIN}"
+  # When served through the v0 / Vercel Sandbox preview proxy the fixed
+  # "app.localhost:3000" asset host is unreachable from the browser, so emit
+  # same-origin (relative) asset URLs instead. Rails already proxies /vite-dev/*
+  # on the same port, so relative URLs resolve correctly through the preview host.
+  if ENV["V0_PREVIEW"].present?
+    config.asset_host = nil
+  else
+    config.asset_host = "#{PROTOCOL}://#{ASSET_DOMAIN}"
+  end
 
   # Where to store uploaded files (see config/storage.yml for options)
   config.active_storage.service = :development

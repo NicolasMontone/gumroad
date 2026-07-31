@@ -127,6 +127,14 @@ export default defineConfig(({ mode }) => ({
       $vendor: path.join(rootPath, "vendor/assets/javascripts"),
       jwplayer: path.join(rootPath, "vendor/assets/components/jwplayer-7.12.13/jwplayer"),
     },
+    // Force a single React instance across pre-bundled deps (e.g.
+    // @inertiajs/react) and app source. Without this the Vite dev optimizer
+    // can load a second React copy, triggering "Invalid hook call / more than
+    // one copy of React" and a blank screen.
+    dedupe: ["react", "react-dom"],
+  },
+  optimizeDeps: {
+    include: ["react", "react-dom", "react-dom/client", "react/jsx-dev-runtime", "react/jsx-runtime"],
   },
   define: {
     SSR: false,
